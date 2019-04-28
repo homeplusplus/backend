@@ -36,7 +36,19 @@ router.get('/', (req, res) => {
 
 });
 
-// test reponse
+// send to a register number a greeting
+router.post('/phone', (req, res) => {
+  let phone = req.query.phone;
+  phone = "+" + phone;
+  client.messages
+  .create({
+      body: 'Hi! Home can I help you today?',
+      from: '+18317095768',
+      to: phone
+  })
+});
+
+// text reponse
 router.post('/sms', (req, res) => {
   const twiml = new MessagingResponse();
   const witClient = new Wit({ accessToken: wit.Token });
