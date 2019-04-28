@@ -34,13 +34,6 @@ router.get('/', (req, res) => {
   // })
   // .then(message => console.log(message.sid))
 
-  // const witClient = new Wit({ accessToken: wit.Token });
-  // witClient.message('What is the temperature in here?', {})
-  //   .then((data) => {
-  //     console.log('Yay, got Wit.ai response: ' + data.entities.intent[0].value);
-  //   })
-  //   .catch(console.error);
-
 });
 
 // test reponse
@@ -53,24 +46,21 @@ router.post('/sms', (req, res) => {
       console.log('Yay, got Wit.ai response: ' + intent);
       if (intent == 'food') {
         twiml.message('You want some food?');
-      }else if (req.body.Body == 'Hello') {
-        twiml.message('Hi!');
-      } else if (req.body.Body == 'Bye') {
-        twiml.message('Goodbye');
+      } else if (intent == 'shelter') {
+        twiml.message('You need a shelter?')
+      } else if (intent == 'greeting') {
+        twiml.message('Hi! How can I help you today?');
+      } else if (intent == 'greeting-end') {
+        twiml.message('Goodbye! Have a nice day!');
+      } else if(intent == 'thank'){
+        twiml.message(`We're here to help!`);
+      } else {
+        twiml.message('Common commands: Food, Shelter');
       }
       res.writeHead(200, { 'Content-Type': 'text/xml' });
       res.end(twiml.toString());
     })
     .catch(console.error);
-
-  // else {
-  //   twiml.message(
-  //     'No Body param match, Twilio sends this in the request to your server.'
-  //   );
-  // }
-
-  // res.writeHead(200, { 'Content-Type': 'text/xml' });
-  // res.end(twiml.toString());
 });
 
 // Use our router configuration when we call /api
