@@ -10,6 +10,15 @@ const MessagingResponse = require('twilio').twiml.MessagingResponse;
 // create wit
 const { Wit, log } = require('node-wit');
 
+// Get a database reference to our posts
+var admin = require("firebase-admin");
+var serviceAccount = require("./config/key.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://vrfest-757e1.firebaseio.com"
+});
+var db = admin.database();
+var refItems = db.ref('food/');
 // create our instances
 const app = express();
 const router = express.Router();
@@ -22,30 +31,28 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(logger('dev'));
 
-
-// now we can set the route path & initialize the API
+// sending cold message functionality
 router.get('/', (req, res) => {
   res.json({ message: 'Hello, World!' });
-  // client.messages
-  // .create({
-  //     body: 'This is the ship that made the Kessel Run in fourteen parsecs?',
-  //     from: '+18317095768',
-  //     to: '+14087992849'
-  // })
-  // .then(message => console.log(message.sid))
-
+  // testing purpose
+  client.messages
+    .create({
+      body: 'Hi! How can I help you today?',
+      from: '+18317095768',
+      to: '1xxxxxxxxxx' //your phone number
+    })
 });
 
-// send to a register number a greeting
+// send to a registered number a greeting
 router.post('/phone', (req, res) => {
   let phone = req.query.phone;
   phone = "+" + phone;
   client.messages
-  .create({
-      body: 'Hi! Home can I help you today?',
+    .create({
+      body: 'Hi! How can I help you today?',
       from: '+18317095768',
       to: phone
-  })
+    })
 });
 
 // text reponse
@@ -56,26 +63,47 @@ router.post('/sms', (req, res) => {
     .then((data) => {
       let intent = data.entities.intent ? data.entities.intent[0].value : 'empty';
       console.log('Yay, got Wit.ai response: ' + intent);
-      if (intent == 'food') {
-        twiml.message('You want some food?');
+      // location functionality to be implemented
+      if (intent == 'food-location-specific') {
+        var val = [];
+        refItems.on('child_added', function (snap) {
+          val = [...val, snap.val()];
+          twiml.message('\n' + 'Here\'s a location I found:' + '\n' + snap.val().name + '\n' + snap.val().phoneNumber + '\n' + snap.val().address);
+          res.writeHead(200, { 'Content-Type': 'text/xml' });
+          res.end(twiml.toString());
+        });
+      } else if (intent == 'food') {
+        let randArray = ['food1', 'food2'];
+        let randomItem = randArray[Math.floor(Math.random() * randArray.length)];
+        db.ref(`food_no_loc/${randomItem}`).once('value', function (snapshot) {
+          twiml.message('\n' + 'Here\'s a location I found:' + '\n' + snapshot.val().name + '\n' + snapshot.val().phoneNumber + '\n' + snapshot.val().address);
+          res.writeHead(200, { 'Content-Type': 'text/xml' });
+          res.end(twiml.toString());
+        });
       } else if (intent == 'shelter') {
-        twiml.message('You need a shelter?')
-      } else if (intent == 'greeting') {
-        twiml.message('Hi! How can I help you today?');
-      } else if (intent == 'greeting-end') {
-        twiml.message('Goodbye! Have a nice day!');
-      } else if(intent == 'thank'){
-        twiml.message(`We're here to help!`);
+        db.ref('shelter/shelter1').once('value', function (snapshot) {
+          twiml.message('\n' + 'Here\'s a location I found:' + '\n' + snapshot.val().name + '\n' + snapshot.val().phoneNumber + '\n' + snapshot.val().address);
+          res.writeHead(200, { 'Content-Type': 'text/xml' });
+          res.end(twiml.toString());
+        });
       } else {
-        twiml.message('Common commands: Food, Shelter');
+        if (intent == 'greeting') {
+          twiml.message('\n' + 'Hi! How can I help you today?');
+        } else if (intent == 'greeting-end') {
+          twiml.message('\n' + 'Goodbye! Have a nice day!');
+        } else if (intent == 'thank') {
+          twiml.message('\n' + `We're here to help!`);
+        } else {
+          twiml.message('\n' + 'I\'m not sure I understand. Are you in need of food or a shelter?');
+        }
+        res.writeHead(200, { 'Content-Type': 'text/xml' });
+        res.end(twiml.toString());
       }
-      res.writeHead(200, { 'Content-Type': 'text/xml' });
-      res.end(twiml.toString());
     })
     .catch(console.error);
 });
 
 // Use our router configuration when we call /api
-app.use('/api', router);
+app.use('/', router);
 
 app.listen(API_PORT, () => console.log(`Listening on port ${API_PORT}`));
